@@ -3,10 +3,9 @@ pragma solidity >=0.7.0 <0.9.0;
 
 contract Abatement {
 
-    // Fixed parameters
-    uint constant totalUsers = 3; // Bidding mechanism starts when `totalUsers' are registration
-    uint constant deadline = 0; // All transfers can be refunded if `deadline' is reached
-    int constant fixDeposit = 0; // Fixed deposit
+    uint totalUsers; // Bidding mechanism starts when `totalUsers' are registration
+    uint deadline; // All transfers can be refunded if `deadline' is reached
+    int fixDeposit; // Fixed deposit
 
     struct User {
         address add; // User's address
@@ -41,6 +40,13 @@ contract Abatement {
     modifier onlyProposer { // Requires that address belongs to the proposer
         require(getID[msg.sender] == proposerID, "Action only available to proposer");
         _;
+    }
+    
+    constructor (uint _totalUsers, uint _deadline, int _fixDeposit) {
+        totalUsers = _totalUsers;
+        deadline = _deadline;
+        fixDeposit = _fixDeposit;
+        state = 0;
     }
 
     function sum (int[] memory _arr) pure internal returns (int) { // Computes sum of array
