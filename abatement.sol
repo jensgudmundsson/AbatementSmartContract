@@ -159,7 +159,7 @@ contract Abatement {
                     users[proposerID].toRefund -= proposal[j] * unitMultiplier - users[j].deposit + fixDeposit;
                 }
                 executeTransfers();
-                selfdestruct();
+                selfdestruct(payable(users[0].add));
             }
         }
     }
@@ -175,7 +175,7 @@ contract Abatement {
     function abort () public { // Refunds can be made if deadline has passed
         require(block.timestamp >= deadline, "Deadline has not yet been reached");
         executeTransfers();
-        selfdestruct();
+        selfdestruct(payable(users[0].add));
     }
 
     function DEBUGgetHash (int[] memory _arr) public pure returns (bytes32) {
