@@ -3,9 +3,11 @@ pragma solidity >=0.7.0 <0.9.0;
 
 contract Abatement {
 
+    // Fixed parameters
     uint totalUsers; // Bidding mechanism starts when `totalUsers' are registration
     uint deadline; // All transfers can be refunded if `deadline' is reached
     int fixDeposit; // Fixed deposit
+    int constant unitMultiplier = 1000000000000000000; // A bid of 1 corresponds to `unitMultiplier' wei, here 1 ether
 
     struct User {
         address add; // User's address
@@ -98,7 +100,7 @@ contract Abatement {
     function reveal (int[] memory _bid) public payable activeUsers inState(3) { // Reveal bid, must match encrypted commitment
         uint i = getID[msg.sender];
         require(users[i].encryptedBid == keccak256(abi.encodePacked(_bid)), "Bid does not match encrypted commitment");
-        require(sum(_bid) <= int(msg.value), "Transacted amount does not cover bid");
+        require(sum(_bid) * unitMultiplier <= int(msg.value), "Transacted amount does not cover bid");
         users[i].toRefund += int(msg.value);
         users[i].plainBid = _bid;
         users[i].completedAction = true;
@@ -121,13 +123,13 @@ contract Abatement {
         }
         proposerID = maxID;
         for (uint j = 0; j < numberActiveUsers; j++) { // Execute proposer's bids
-            users[j].toRefund += users[proposerID].plainBid[j];
-            users[proposerID].toRefund -= users[proposerID].plainBid[j];
+            users[j].toRefund += users[proposerID].plainBid[j] * unitMultiplier;
+            users[proposerID].toRefund -= users[proposerID].plainBid[j] * unitMultiplier;
         }
     }
 
     function propose (int[] memory _proposal) public payable onlyProposer inState(4) { // Proposal
-        require(sum(_proposal) <= int(msg.value), "Transacted amount does not cover proposal");
+        require(sum(_proposal) * unitMultiplier <= int(msg.value), "Transacted amount does not cover proposal");
         users[proposerID].toRefund += int(msg.value);
         proposal = _proposal;
         state ++;
@@ -153,10 +155,11 @@ contract Abatement {
         else {
             if (completedPhase()) { // Accepted
                 for (uint j = 0; j < numberActiveUsers; j++) {
-                    users[j].toRefund += proposal[j] - users[j].deposit + fixDeposit;
-                    users[proposerID].toRefund -= proposal[j] - users[j].deposit + fixDeposit;
+                    users[j].toRefund += proposal[j] * unitMultiplier - users[j].deposit + fixDeposit;
+                    users[proposerID].toRefund -= proposal[j] * unitMultiplier - users[j].deposit + fixDeposit;
                 }
                 executeTransfers();
+                selfdestruct();
             }
         }
     }
@@ -172,6 +175,7 @@ contract Abatement {
     function abort () public { // Refunds can be made if deadline has passed
         require(block.timestamp >= deadline, "Deadline has not yet been reached");
         executeTransfers();
+        selfdestruct();
     }
 
     function DEBUGgetHash (int[] memory _arr) public pure returns (bytes32) {
